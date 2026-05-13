@@ -68,24 +68,37 @@ local keys = {
 -- Keep track of active keys
 local activeKeys = {}
 
-function pianoplayer:play(note, dur)
-    local key = keys[note]
-    if not key then return end
-    
-    -- prevent overlap spam
-    if activeKeys[key] then return end
-    activeKeys[key] = true
+function pianoplayer:play(notes, dur)
+    dur = dur or 0.03
 
-    vim:SendKeyEvent(true, key, false, game)
+    -- allow single note or table of notes
+    if typeof(notes) ~= "table" then
+        notes = {notes}
+    end
 
-    task.delay(dur or 0.03, function()
-        vim:SendKeyEvent(false, key, false, game)
-        activeKeys[key] = nil
+    local pressed = {}
+
+    for _, note in ipairs(notes) do
+        local key = keys[note]
+
+        if key and not activeKeys[key] then
+            activeKeys[key] = true
+            table.insert(pressed, key)
+
+            vim:SendKeyEvent(true, key, false, game)
+        end
+    end
+
+    task.delay(dur, function()
+        for _, key in ipairs(pressed) do
+            vim:SendKeyEvent(false, key, false, game)
+            activeKeys[key] = nil
+        end
     end)
 end
 
 function pianoplayer:sleep(seconds)
-    task.delay(seconds)
+    task.wait(seconds)
 end
 
 -- Destroy/cleanup function
